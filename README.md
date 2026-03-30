@@ -15,6 +15,19 @@ cd SlapMacPro
 make install
 ```
 
+> **Not comfortable with git?** Just click the green **Code** button on GitHub → **Download ZIP**, unzip it, open Terminal, `cd` into the unzipped folder, and run `make install`.
+
+### Pre-built Binary (no Xcode needed)
+
+Download the latest release from the [Releases](../../releases) page. Unzip it and run:
+
+```bash
+cd SlapMacPro-release
+./install.sh
+```
+
+This copies the pre-built binary, sets up launch at login, and starts the app. No Xcode or Swift toolchain required.
+
 That's it. A hand emoji (👋) appears in your menu bar. It starts automatically every time you log in. Slap your MacBook.
 
 If you just want to run it without installing:
