@@ -15,8 +15,8 @@ class SlapController: ObservableObject {
     private let accelerometer = AccelerometerReader()
     private var slapDetector: SlapDetector
     private let screenFlash = ScreenFlash()
-    private let screenShaker = ScreenShaker()
-    private let brightnessFlash = BrightnessFlash()
+    let screenShaker = ScreenShaker()
+    let brightnessFlash = BrightnessFlash()
     private let hapticFeedback = HapticFeedback()
     private let settings: SettingsStore
 
@@ -27,6 +27,10 @@ class SlapController: ObservableObject {
         self.slapDetector = SlapDetector(config: settings.sensitivity.detectorConfig)
 
         audioPlayer.loadSounds(for: settings.voicePack)
+
+        // Apply saved intensity multipliers
+        screenShaker.intensityMultiplier = settings.shakeIntensity * 2.0
+        brightnessFlash.intensityMultiplier = settings.brightnessFlashIntensity * 2.0
 
         // Wire up slap detection
         slapDetector.onSlap = { [weak self] event in

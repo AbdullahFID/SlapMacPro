@@ -112,36 +112,63 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         dynVolItem.state = settings.dynamicVolume ? .on : .off
         statusMenu.addItem(dynVolItem)
 
+        statusMenu.addItem(NSMenuItem.separator())
+
+        // --- Effects Section ---
+        let effectsHeader = NSMenuItem(title: "Effects", action: nil, keyEquivalent: "")
+        effectsHeader.isEnabled = false
+        statusMenu.addItem(effectsHeader)
+
         // Screen flash toggle
         let flashItem = NSMenuItem(
-            title: "Screen Flash",
+            title: "Screen Flash (Overlay)",
             action: #selector(toggleScreenFlash), keyEquivalent: ""
         )
         flashItem.target = self
         flashItem.state = settings.screenFlashEnabled ? .on : .off
         statusMenu.addItem(flashItem)
 
-        // Screen Shake toggle (SkyLight private API)
+        // Screen Shake toggle
         let shakeItem = NSMenuItem(
-            title: "Screen Shake ⚡",
+            title: "Screen Shake",
             action: #selector(toggleScreenShake), keyEquivalent: ""
         )
         shakeItem.target = self
         shakeItem.state = settings.screenShakeEnabled ? .on : .off
         statusMenu.addItem(shakeItem)
 
-        // Brightness Flash toggle (DisplayServices private API)
+        // Screen Shake intensity slider
+        if settings.screenShakeEnabled {
+            let shakeSlider = createSliderItem(
+                value: settings.shakeIntensity,
+                label: "  Shake: \(Int(settings.shakeIntensity * 100))%",
+                action: #selector(shakeIntensityChanged(_:))
+            )
+            statusMenu.addItem(shakeSlider)
+        }
+
+        // Brightness Flash toggle
         let brItem = NSMenuItem(
-            title: "Brightness Flash 💡",
+            title: "Brightness Flash",
             action: #selector(toggleBrightnessFlash), keyEquivalent: ""
         )
         brItem.target = self
         brItem.state = settings.brightnessFlashEnabled ? .on : .off
         statusMenu.addItem(brItem)
 
-        // Haptic Feedback toggle (MultitouchSupport private API)
+        // Brightness Flash intensity slider
+        if settings.brightnessFlashEnabled {
+            let brSlider = createSliderItem(
+                value: settings.brightnessFlashIntensity,
+                label: "  Flash: \(Int(settings.brightnessFlashIntensity * 100))%",
+                action: #selector(brightnessIntensityChanged(_:))
+            )
+            statusMenu.addItem(brSlider)
+        }
+
+        // Haptic Feedback toggle
         let hapticItem = NSMenuItem(
-            title: "Haptic Feedback 📳",
+            title: "Haptic Feedback",
             action: #selector(toggleHapticFeedback), keyEquivalent: ""
         )
         hapticItem.target = self
@@ -156,6 +183,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         usbItem.target = self
         usbItem.state = settings.usbMoanerEnabled ? .on : .off
         statusMenu.addItem(usbItem)
+
+        statusMenu.addItem(NSMenuItem.separator())
+
+        // Volume slider
+        let volSlider = createSliderItem(
+            value: Double(settings.volume),
+            label: "Volume: \(Int(settings.volume * 100))%",
+            action: #selector(volumeChanged(_:))
+        )
+        statusMenu.addItem(volSlider)
 
         statusMenu.addItem(NSMenuItem.separator())
 
@@ -211,6 +248,35 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func toggleScreenFlash() {
         settings.screenFlashEnabled.toggle()
         rebuildMenu()
+    }
+
+    func createSliderItem(value: Double, label: String, action: Selector) -> NSMenuItem {
+        let item = NSMenuItem()
+        let view = NSView(frame: NSRect(x: 0, y: 0, width: 220, height: 30))
+        let labelView = NSTextField(labelWithString: label)
+        labelView.frame = NSRect(x: 14, y: 6, width: 80, height: 18)
+        labelView.font = NSFont.menuFont(ofSize: 12)
+        let slider = NSSlider(value: value, minValue: 0.0, maxValue: 1.0, target: self, action: action)
+        slider.frame = NSRect(x: 96, y: 6, width: 110, height: 18)
+        slider.tag = 100
+        view.addSubview(labelView)
+        view.addSubview(slider)
+        item.view = view
+        return item
+    }
+
+    @objc func shakeIntensityChanged(_ sender: NSSlider) {
+        settings.shakeIntensity = sender.doubleValue
+        slapController?.screenShaker.intensityMultiplier = sender.doubleValue * 2.0
+    }
+
+    @objc func brightnessIntensityChanged(_ sender: NSSlider) {
+        settings.brightnessFlashIntensity = sender.doubleValue
+        slapController?.brightnessFlash.intensityMultiplier = sender.doubleValue * 2.0
+    }
+
+    @objc func volumeChanged(_ sender: NSSlider) {
+        settings.volume = Float(sender.doubleValue)
     }
 
     @objc func toggleScreenShake() {

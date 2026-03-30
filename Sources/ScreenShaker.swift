@@ -2,25 +2,23 @@ import Foundation
 import CoreGraphics
 import AppKit
 
-/// Shakes all on-screen windows using SkyLight's private SLSSetWindowTransform.
-/// Works over fullscreen apps, menubar, dock — everything rattles.
-/// The harder the slap, the bigger the shake and longer the duration.
+/// Shakes ALL on-screen windows using CGS private API.
+/// Uses _CGSDefaultConnection which gives cross-process window access.
+/// Every window on screen — Chrome, Dock, menu bar, everything — rattles.
 class ScreenShaker {
     private var isShaking = false
 
+    /// Shake intensity multiplier (0.0 to 2.0, default 1.0)
+    var intensityMultiplier: Double = 1.0
+
     func shake(intensity: Double) {
         guard !isShaking else { return }
-        guard let setTransform = SkyLightAPI.setWindowTransform,
-              let getTransform = SkyLightAPI.getWindowTransform else {
-            log("ScreenShaker: SkyLight API not available")
-            return
-        }
-
         isShaking = true
-        let conn = SkyLightAPI.connection
+
+        let conn = CGSDefaultConnection()
         guard conn != 0 else { isShaking = false; return }
 
-        // Get ALL on-screen windows
+        // Get ALL on-screen windows via public CGWindowList API
         guard let windowInfoList = CGWindowListCopyWindowInfo(
             [.optionOnScreenOnly], kCGNullWindowID
         ) as? [[String: Any]] else {
@@ -28,43 +26,39 @@ class ScreenShaker {
             return
         }
 
-        // Collect all window IDs (don't filter by layer — shake EVERYTHING)
-        let windowIDs = windowInfoList.compactMap { $0[kCGWindowNumber as String] as? UInt32 }
-
-        // Save original transforms
+        // Save every window's current transform
         var originals: [(UInt32, CGAffineTransform)] = []
-        for wid in windowIDs {
+        for info in windowInfoList {
+            guard let wid = info[kCGWindowNumber as String] as? UInt32 else { continue }
             var transform = CGAffineTransform.identity
-            _ = getTransform(conn, wid, &transform)
+            _ = CGSGetWindowTransform(conn, wid, &transform)
             originals.append((wid, transform))
         }
 
-        // Shake parameters scale with intensity
-        let maxOffset = 6.0 + intensity * 20.0    // 6-26px displacement
-        let shakeCount = 4 + Int(intensity * 6)    // 4-10 oscillations
-        let frameDelay = UInt32(20_000)             // 20ms per frame (~50fps)
+        guard !originals.isEmpty else { isShaking = false; return }
+
+        // Scale parameters with intensity + user multiplier
+        let scale = intensity * intensityMultiplier
+        let maxOffset = 8.0 + scale * 22.0     // 8-30px displacement
+        let shakeCount = 5 + Int(scale * 7)     // 5-12 oscillations
+        let frameDelay: UInt32 = 22_000          // ~45fps
 
         DispatchQueue.global(qos: .userInteractive).async { [weak self] in
             for i in 0..<shakeCount {
-                // Damped oscillation: amplitude decays, alternates direction
                 let decay = 1.0 - Double(i) / Double(shakeCount)
-                let angle = Double(i) * .pi
-                let dx = maxOffset * decay * sin(angle)
-                let dy = maxOffset * decay * 0.4 * cos(angle * 1.3)
+                let dx = maxOffset * decay * sin(Double(i) * .pi)
+                let dy = maxOffset * decay * 0.35 * cos(Double(i) * .pi * 1.4)
 
                 for (wid, original) in originals {
-                    let shaken = original.translatedBy(x: CGFloat(dx), y: CGFloat(dy))
-                    _ = setTransform(conn, wid, shaken)
+                    _ = CGSSetWindowTransform(conn, wid, original.translatedBy(x: CGFloat(dx), y: CGFloat(dy)))
                 }
-
                 usleep(frameDelay)
             }
 
-            // Restore all windows
+            // Restore all
             for (wid, original) in originals {
-                _ = setTransform(conn, wid, original)
+                _ = CGSSetWindowTransform(conn, wid, original)
             }
-
             self?.isShaking = false
         }
     }
