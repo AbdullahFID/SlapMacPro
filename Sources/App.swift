@@ -168,7 +168,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Haptic Feedback toggle
         let hapticItem = NSMenuItem(
-            title: "Haptic Feedback",
+            title: "Trackpad Haptic Feedback",
             action: #selector(toggleHapticFeedback), keyEquivalent: ""
         )
         hapticItem.target = self
