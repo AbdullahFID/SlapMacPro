@@ -11,17 +11,19 @@ Built by reverse-engineering [SlapMac](https://slapmac.com/) and studying [taigr
 git clone https://github.com/AbdullahFID/SlapMacPro.git
 cd SlapMacPro
 
-# 2. Build
-swift build -c release
-
-# 3. Sign with ad-hoc signature (required for IOKit accelerometer access)
-codesign --force --sign - .build/release/SlapMacClone
-
-# 4. Run
-.build/release/SlapMacClone
+# 2. Build, install, and launch at login (one command)
+make install
 ```
 
-That's it. A hand emoji (👋) appears in your menu bar. Slap your MacBook.
+That's it. A hand emoji (👋) appears in your menu bar. It starts automatically every time you log in. Slap your MacBook.
+
+If you just want to run it without installing:
+
+```bash
+swift build -c release
+codesign --force --sign - .build/release/SlapMacClone
+.build/release/SlapMacClone
+```
 
 ## Setup
 
@@ -55,7 +57,17 @@ You need `.mp3` or `.wav` sound files in `~/Desktop/slapmac/audio/`. Name them w
 
 Example: `sexy_01.mp3`, `punch_05.mp3`, `goat_3.mp3`
 
-You can use any sounds you want. Just drop them in the folder with the right prefix and restart the app.
+You can use any sounds you want — record your own, grab free sound effects, whatever. Just drop them in the folder with the right prefix and restart the app.
+
+**Using SlapMac's sound files:** If you own [SlapMac](https://slapmac.com/) ($7), you can copy their 130+ sound files from the app bundle for personal use:
+
+```bash
+mkdir -p ~/Desktop/slapmac/audio
+cp /Applications/slapmac.app/Contents/Resources/*.mp3 ~/Desktop/slapmac/audio/
+cp /Applications/slapmac.app/Contents/Resources/*.wav ~/Desktop/slapmac/audio/
+```
+
+> **Note:** SlapMac's audio files are copyrighted by tonnoz. You may use them locally for personal use if you own the app, but do not redistribute them.
 
 ### Install with Launch at Login
 
@@ -66,8 +78,26 @@ make install
 This will:
 - Build a release binary
 - Copy it to `~/Desktop/slapmac/bin/SlapMacPro`
-- Create a LaunchAgent so it starts automatically at login
+- Create a LaunchAgent (`~/Library/LaunchAgents/com.slapmacpro.plist`) so it starts automatically at login
 - Launch it immediately
+
+No `.app` bundle needed — it uses a standard macOS LaunchAgent which works with any binary.
+
+### Managing Launch at Login
+
+```bash
+# Disable auto-start (keeps installed, just won't launch at login)
+make disable
+
+# Re-enable auto-start
+make enable
+
+# Manually stop the running app
+launchctl unload ~/Library/LaunchAgents/com.slapmacpro.plist
+
+# Manually start it
+launchctl load ~/Library/LaunchAgents/com.slapmacpro.plist
+```
 
 ### Uninstall
 
@@ -75,7 +105,7 @@ This will:
 make uninstall
 ```
 
-Removes the binary, LaunchAgent, and stops the app.
+Removes the binary, LaunchAgent, and stops the app completely.
 
 ### Other Commands
 
@@ -86,12 +116,8 @@ swift build
 # Build release
 make build
 
-# Run debug (with console output)
+# Run without installing (debug, with console output)
 swift build && .build/debug/SlapMacClone 2>&1
-
-# Toggle launch at login
-make enable    # turn on
-make disable   # turn off
 
 # View live detection logs
 tail -f /tmp/slapmacpro.log
